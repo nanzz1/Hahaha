@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Chatbot</title>
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      font-family: Arial, sans-serif;
+    }
+    .chat-container {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      width: 350px;
+      box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+    }
+    #chat-box {
+      height: 300px;
+      overflow-y: auto;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+    }
+    .message {
+      margin: 5px;
+      padding: 10px;
+      border-radius: 15px;
+      max-width: 80%;
+      animation: fadeIn 0.3s ease-in-out;
+      word-wrap: break-word;
+    }
+    .user {
+      background: #4CAF50;
+      color: white;
+      align-self: flex-end;
+    }
+    .bot {
+      background: #e0e0e0;
+      align-self: flex-start;
+    }
+    .message img {
+      max-width: 200px;
+      border-radius: 10px;
+      display: block;
+      margin-top: 5px;
+    }
+    .input-container {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+    input[type="text"] {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    input[type="file"] {
+      flex: 1;
+    }
+    button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 10px;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+    button:hover {
+      background: #45a049;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-container">
+    <h1>🤖 AI NANZZ</h1>
+    <div id="chat-box"></div>
+    
+    <div class="input-container">
+      <input type="text" id="userInput" placeholder="Tanyakan sesuatu...">
+      <input type="file" id="imageInput" accept="image/*">
+      <button onclick="askAI()">Kirim</button>
+    </div>
+  </div>
+
+  <script>
+    const API_KEY = "AIzaSyATJEaaewYNarxkKAindPba6zFBSjPalUI"; // <-- isi dengan API key bener (harus format AIza...)
+    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+
+    async function askAI() {
+      const userInput = document.getElementById("userInput").value;
+      const imageFile = document.getElementById("imageInput").files[0];
+
+      if (!userInput && !imageFile) return alert("Masukkan pertanyaan atau pilih gambar!");
+
+      if (userInput) addMessage(userInput, "user");
+      if (imageFile) {
+        const base64Image = await toBase64(imageFile);
+        addImageMessage(base64Image, "user");
+      }
+
+      document.getElementById("userInput").value = "";
+      document.getElementById("imageInput").value = "";
+
+      let parts = [];
+      if (userInput) parts.push({ text: userInput });
+
+      if (imageFile) {
+        const base64Image = await toBase64(imageFile);
+        parts.push({
+          inlineData: {
+            mimeType: imageFile.type,
+            data: base64Image.split(",")[1]
+          }
+        });
+      }
+
+      const requestBody = { contents: [{ parts }] };
+
+      try {
+        const response = await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(requestBody)
+        });
+
+        const data = await response.json();
+        let reply = "Maaf, saya tidak bisa menjawab itu.";
+        if (data.candidates?.length > 0) {
+          reply = data.candidates[0]?.content?.parts?.[0]?.text || reply;
+        }
+        addMessage(reply, "bot");
+      } catch (error) {
+        addMessage("Terjadi kesalahan.", "bot");
+        console.error("Error:", error);
+      }
+    }
+
+    function addMessage(text, sender) {
+      const chatBox = document.getElementById("chat-box");
+      const messageDiv = document.createElement("div");
+      messageDiv.classList.add("message", sender);
+      messageDiv.textContent = text;
+      chatBox.appendChild(messageDiv);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function addImageMessage(base64, sender) {
+      const chatBox = document.getElementById("chat-box");
+      const messageDiv = document.createElement("div");
+      messageDiv.classList.add("message", sender);
+
+      const img = document.createElement("img");
+      img.src = base64;
+      messageDiv.appendChild(img);
+
+      chatBox.appendChild(messageDiv);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function toBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+      });
+    }
+  </script>
+</body>
+</html>
